@@ -516,7 +516,20 @@
     gap: 12px;
   }
 
-  .btn-delete {
+  .btn-edit {
+    flex: 1;
+    padding: 12px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .btn-edit:hover { opacity: 0.9; }
     flex: 1;
     padding: 12px;
     background: #fff;
@@ -642,7 +655,7 @@
 <div class="modal-overlay" id="upload-modal">
   <div class="modal">
     <button class="modal-close" onclick="closeUploadModal()">&times;</button>
-    <h2>上传新菜谱</h2>
+    <h2 id="upload-modal-title">上传新菜谱</h2>
     <div class="form-group">
       <label>菜名</label>
       <input type="text" id="form-name" placeholder="例如：红烧肉">
@@ -688,7 +701,8 @@
       <div class="detail-section-title">原材料</div>
       <div class="detail-ingredients" id="detail-ingredients"></div>
       <div class="detail-actions">
-        <button class="btn-delete" onclick="handleDelete()">删除这道菜</button>
+        <button class="btn-edit" onclick="openEditModal()">编辑</button>
+        <button class="btn-delete" onclick="handleDelete()">删除</button>
       </div>
     </div>
   </div>
@@ -730,7 +744,9 @@ let currentCategory = 'all';
 let currentDetailId = null;
 let selectedFile = null;
 let compressedDataUrl = null;
-let isUploading = false;
+let isEditMode = false;
+let editingId = null;
+let editingOldImage = null;
 
 // ===== 初始化：从 Supabase 加载数据 =====
 async function init() {
@@ -861,6 +877,50 @@ function openUploadModal() {
     showToast('请先配置 Supabase 凭证');
     return;
   }
+  isEditMode = false;
+  editingId = null;
+  editingOldImage = null;
+  document.getElementById('upload-modal-title').textContent = '上传新菜谱';
+  document.getElementById('upload-submit-btn').textContent = '发布';
+  resetUploadForm();
+  document.getElementById('upload-modal').classList.add('open');
+}
+
+function openEditModal() {
+  if (!currentDetailId) return;
+  const recipe = recipes.find(r => r.id === currentDetailId);
+  if (!recipe) return;
+
+  isEditMode = true;
+  editingId = recipe.id;
+  editingOldImage = recipe.image_url;
+
+  document.getElementById('upload-modal-title').textContent = '编辑菜谱';
+  document.getElementById('upload-submit-btn').textContent = '保存';
+
+  // 预填充表单
+  document.getElementById('form-name').value = recipe.name;
+  document.getElementById('form-category').value = recipe.category;
+  document.getElementById('form-ingredients').value = recipe.ingredients;
+
+  // 预填充图片
+  if (recipe.image_url) {
+    document.getElementById('img-preview').src = recipe.image_url;
+    document.getElementById('img-preview').style.display = '';
+    document.getElementById('img-placeholder').style.display = 'none';
+    compressedDataUrl = recipe.image_url; // 标记已有图片
+  } else {
+    document.getElementById('img-preview').style.display = 'none';
+    document.getElementById('img-placeholder').style.display = '';
+    compressedDataUrl = null;
+  }
+
+  selectedFile = null;
+  document.getElementById('form-file').value = '';
+  document.getElementById('upload-submit-btn').disabled = false;
+  isUploading = false;
+
+  closeDetailModal();
   document.getElementById('upload-modal').classList.add('open');
 }
 
@@ -880,6 +940,9 @@ function resetUploadForm() {
   selectedFile = null;
   compressedDataUrl = null;
   isUploading = false;
+  isEditMode = false;
+  editingId = null;
+  editingOldImage = null;
 }
 
 // ===== 图片选择 & 压缩 =====
@@ -916,7 +979,7 @@ function compressImage(file, callback) {
   reader.readAsDataURL(file);
 }
 
-// ===== 发布上传（真实写入 Supabase）=====
+// ===== 发布/保存（写入 Supabase）=====
 async function handleUpload() {
   if (isUploading) return;
 
@@ -930,13 +993,16 @@ async function handleUpload() {
   isUploading = true;
   const btn = document.getElementById('upload-submit-btn');
   btn.disabled = true;
-  btn.textContent = '上传中...';
+  btn.textContent = isEditMode ? '保存中...' : '上传中...';
 
   try {
-    // 1. 上传图片到 Supabase Storage
     let imageUrl = null;
-    if (selectedFile && compressedDataUrl) {
-      // 把 dataUrl 转成 blob
+
+    if (isEditMode && !selectedFile && compressedDataUrl === editingOldImage) {
+      // 编辑模式且没换图：保留原图
+      imageUrl = editingOldImage;
+    } else if (selectedFile && compressedDataUrl) {
+      // 有新图片：上传新图片
       const blob = dataURLtoBlob(compressedDataUrl);
       const fileName = Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
 
@@ -948,53 +1014,82 @@ async function handleUpload() {
         console.error('图片上传失败:', uploadError);
         showToast('图片上传失败: ' + uploadError.message);
         btn.disabled = false;
+        btn.textContent = isEditMode ? '保存' : '发布';
+        isUploading = false;
+        return;
+      }
+
+      const { data: urlData } = sbClient.storage
+        .from('recipe-images')
+        .getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+
+      // 编辑模式且换了图：删除旧图片
+      if (isEditMode && editingOldImage) {
+        try {
+          const oldPath = editingOldImage.split('/').pop();
+          if (oldPath) {
+            await sbClient.storage.from('recipe-images').remove([oldPath]);
+          }
+        } catch (e) {
+          console.warn('删除旧图片失败:', e);
+        }
+      }
+    }
+
+    if (isEditMode) {
+      // 编辑模式：UPDATE
+      const { data, error } = await sbClient
+        .from('recipes')
+        .update({ name, category, ingredients, image_url: imageUrl })
+        .eq('id', editingId)
+        .select();
+
+      if (error) {
+        console.error('更新失败:', error);
+        showToast('保存失败: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = '保存';
+        isUploading = false;
+        return;
+      }
+
+      // 更新本地数据
+      const idx = recipes.findIndex(r => r.id === editingId);
+      if (idx !== -1) recipes[idx] = data[0];
+
+    } else {
+      // 新建模式：INSERT
+      const { data, error } = await sbClient
+        .from('recipes')
+        .insert([{ name, category, ingredients, image_url: imageUrl }])
+        .select();
+
+      if (error) {
+        console.error('写入数据库失败:', error);
+        showToast('保存失败: ' + error.message);
+        btn.disabled = false;
         btn.textContent = '发布';
         isUploading = false;
         return;
       }
 
-      // 获取公开 URL
-      const { data: urlData } = sbClient.storage
-        .from('recipe-images')
-        .getPublicUrl(fileName);
-      imageUrl = urlData.publicUrl;
+      recipes.unshift(data[0]);
     }
 
-    // 2. 写入数据库
-    const { data, error } = await sbClient
-      .from('recipes')
-      .insert([{
-        name,
-        category,
-        ingredients,
-        image_url: imageUrl
-      }])
-      .select();
-
-    if (error) {
-      console.error('写入数据库失败:', error);
-      showToast('保存失败: ' + error.message);
-      btn.disabled = false;
-      btn.textContent = '发布';
-      isUploading = false;
-      return;
-    }
-
-    // 3. 更新本地数据并刷新
-    recipes.unshift(data[0]);
     renderSidebar();
     renderMobileTab();
     renderRecipes();
     closeUploadModal();
-    showToast('上传成功！');
+    showToast(isEditMode ? '保存成功！' : '上传成功！');
 
   } catch (err) {
-    console.error('上传出错:', err);
-    showToast('上传出错，请重试');
+    console.error('操作出错:', err);
+    showToast('操作出错，请重试');
   }
 
   btn.disabled = false;
-  btn.textContent = '发布';
+  btn.textContent = isEditMode ? '保存' : '发布';
   isUploading = false;
 }
 
