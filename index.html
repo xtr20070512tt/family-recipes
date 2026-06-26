@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>徐家菜谱</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --card-bg: #ffffff;
+    --primary: #e85d2c;
+    --primary-light: #fff3ee;
+    --text: #2c2c2c;
+    --text-light: #888;
+    --border: #f0ebe4;
+    --radius: 14px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ===== 桌面端布局 ===== */
+  .app {
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* 左侧导航 */
+  .sidebar {
+    width: 88px;
+    background: #fff;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 0;
+    gap: 4px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 10;
+  }
+
+  .sidebar-title {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .cat-btn {
+    width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    border: none;
+    background: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--text-light);
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .cat-btn span {
+    font-size: 11px;
+    color: var(--text-light);
+  }
+
+  .cat-btn.active {
+    background: var(--primary-light);
+    color: var(--primary);
+  }
+
+  .cat-btn.active span {
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .cat-btn .badge {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-family: monospace;
+  }
+
+  /* 主内容区 */
+  .main {
+    flex: 1;
+    margin-left: 88px;
+    padding: 20px 24px 24px;
+    max-width: 640px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .search-box {
+    flex: 1;
+    position: relative;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .search-box input:focus {
+    border-color: var(--primary);
+  }
+
+  .search-box::before {
+    content: "🔍";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+  }
+
+  .upload-btn {
+    padding: 10px 20px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+
+  .upload-btn:hover { opacity: 0.9; }
+
+  /* 菜谱卡片 */
+  .recipe-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .recipe-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+
+  .recipe-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  }
+
+  .recipe-card:active {
+    transform: scale(0.985);
+  }
+
+  .card-img {
+    width: 200px;
+    min-height: 150px;
+    background: #f0ebe4;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    color: #ccc;
+    overflow: hidden;
+  }
+
+  .card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-body {
+    flex: 1;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .card-category {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--primary-light);
+    color: var(--primary);
+    margin-bottom: 6px;
+    width: fit-content;
+  }
+
+  .card-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-ingredients {
+    font-size: 13px;
+    color: var(--text-light);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .card-ingredients .tag {
+    background: #f5f5f5;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+  }
+
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 15px; }
+
+  /* 加载动画 */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-light);
+    font-size: 15px;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* ===== 弹窗通用 ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 28px 24px;
+    position: relative;
+    transform: translateY(20px);
+    transition: transform 0.2s;
+  }
+
+  .modal-overlay.open .modal {
+    transform: translateY(0);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #f5f5f5;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+  }
+
+  .modal h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    padding-right: 40px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #555;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    border-color: var(--primary);
+  }
+
+  .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .img-upload-area {
+    width: 100%;
+    height: 160px;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    position: relative;
+    background: #fafafa;
+    transition: border-color 0.2s;
+  }
+
+  .img-upload-area:hover {
+    border-color: var(--primary);
+  }
+
+  .img-upload-area .placeholder {
+    color: var(--text-light);
+    font-size: 14px;
+    text-align: center;
+  }
+
+  .img-upload-area img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .img-upload-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .btn-primary {
+    flex: 1;
+    padding: 12px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-cancel {
+    flex: 1;
+    padding: 12px;
+    background: #f5f5f5;
+    color: #666;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  /* ===== 详情弹窗 ===== */
+  .detail-modal .modal {
+    max-width: 520px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .detail-img {
+    width: 100%;
+    height: 280px;
+    background: #f0ebe4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 64px;
+    overflow: hidden;
+  }
+
+  .detail-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .detail-body {
+    padding: 20px 24px 24px;
+  }
+
+  .detail-category {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    background: var(--primary-light);
+    color: var(--primary);
+    margin-bottom: 8px;
+  }
+
+  .detail-name {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 14px;
+  }
+
+  .detail-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 8px;
+  }
+
+  .detail-ingredients {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .detail-ingredients .tag {
+    background: #f5f5f5;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .detail-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .btn-delete {
+    flex: 1;
+    padding: 12px;
+    background: #fff;
+    color: #e74c3c;
+    border: 1.5px solid #e74c3c;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-delete:hover {
+    background: #e74c3c;
+    color: #fff;
+  }
+
+  /* ===== 移动端底部 Tab ===== */
+  .mobile-tab {
+    display: none;
+  }
+
+  /* ===== 响应式 ===== */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+
+    .main {
+      margin-left: 0;
+      padding: 16px 12px 80px;
+    }
+
+    .recipe-card {
+      flex-direction: column;
+    }
+
+    .card-img {
+      width: 100%;
+      height: 180px;
+    }
+
+    .mobile-tab {
+      display: flex;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      z-index: 10;
+      justify-content: space-around;
+      padding: 6px 0 10px;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
+
+    .mobile-tab .cat-btn {
+      width: auto;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+
+    .mobile-tab .cat-btn span {
+      font-size: 10px;
+    }
+
+    .mobile-tab .cat-btn .badge {
+      top: 2px;
+      right: 2px;
+    }
+  }
+
+  /* Toast 提示 */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: #333;
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    z-index: 200;
+    transition: transform 0.3s;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- 桌面端左侧导航 -->
+  <div class="sidebar">
+    <div class="sidebar-title">分类</div>
+    <div id="sidebar-cats"></div>
+  </div>
+
+  <!-- 主内容 -->
+  <div class="main">
+    <div class="header">
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="搜索菜名...">
+      </div>
+      <button class="upload-btn" onclick="openUploadModal()">+ 上传菜谱</button>
+    </div>
+    <div class="recipe-grid" id="recipe-grid">
+      <div class="loading">
+        <div class="spinner"></div>
+        加载中...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 移动端底部 Tab -->
+<div class="mobile-tab" id="mobile-tab"></div>
+
+<!-- 上传弹窗 -->
+<div class="modal-overlay" id="upload-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+    <h2>上传新菜谱</h2>
+    <div class="form-group">
+      <label>菜名</label>
+      <input type="text" id="form-name" placeholder="例如：红烧肉">
+    </div>
+    <div class="form-group">
+      <label>分类</label>
+      <select id="form-category">
+        <option value="hot">🔥 热菜</option>
+        <option value="cold">🥗 凉菜</option>
+        <option value="soup">🍲 汤类</option>
+        <option value="staple">🍚 主食</option>
+        <option value="snack">🥟 小吃</option>
+        <option value="dessert">🍰 甜点</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>原材料（用、分隔）</label>
+      <textarea id="form-ingredients" placeholder="例如：五花肉、冰糖、生抽、老抽"></textarea>
+    </div>
+    <div class="form-group">
+      <label>菜品图片</label>
+      <div class="img-upload-area" onclick="document.getElementById('form-file').click()">
+        <div class="placeholder" id="img-placeholder">点击选择图片</div>
+        <img id="img-preview" style="display:none">
+        <input type="file" id="form-file" accept="image/*" onchange="handleImageSelect(event)">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeUploadModal()">取消</button>
+      <button class="btn-primary" id="upload-submit-btn" onclick="handleUpload()">发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay detail-modal" id="detail-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeDetailModal()">&times;</button>
+    <div class="detail-img" id="detail-img"></div>
+    <div class="detail-body">
+      <div class="detail-category" id="detail-category"></div>
+      <div class="detail-name" id="detail-name"></div>
+      <div class="detail-section-title">原材料</div>
+      <div class="detail-ingredients" id="detail-ingredients"></div>
+      <div class="detail-actions">
+        <button class="btn-delete" onclick="handleDelete()">删除这道菜</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast 提示 -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== 填入你的 Supabase 凭证 ===== -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ============================================================
+// ⚠️ 第一步：去 supabase.com 注册项目，把下面两个值替换掉
+//    1. SUPABASE_URL：项目 Settings → API → Project URL
+//    2. SUPABASE_ANON_KEY：项目 Settings → API → anon public key
+// ============================================================
+const SUPABASE_URL = 'https://iobuquioborahykbzjya.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvYnVxdWlvYm9yYWh5a2J6anlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzODU1NzQsImV4cCI6MjA5Nzk2MTU3NH0.RJaPek4uc0qqnWukX3b4Y8J1fdAPbPt1RFgnuDcUIqg';
+// ============================================================
+
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===== 分类配置 =====
+const CATEGORIES = [
+  { id: 'all',    name: '全部', icon: '🍽️' },
+  { id: 'hot',    name: '热菜', icon: '🔥' },
+  { id: 'cold',   name: '凉菜', icon: '🥗' },
+  { id: 'soup',   name: '汤类', icon: '🍲' },
+  { id: 'staple', name: '主食', icon: '🍚' },
+  { id: 'snack',  name: '小吃', icon: '🥟' },
+  { id: 'dessert',name: '甜点', icon: '🍰' },
+];
+
+const CAT_NAME = Object.fromEntries(CATEGORIES.map(c => [c.id, c.name]));
+const CAT_ICON = Object.fromEntries(CATEGORIES.map(c => [c.id, c.icon]));
+
+let recipes = [];
+let currentCategory = 'all';
+let currentDetailId = null;
+let selectedFile = null;
+let compressedDataUrl = null;
+let isUploading = false;
+
+// ===== 初始化：从 Supabase 加载数据 =====
+async function init() {
+  // 检查凭证是否已填入
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_ANON_KEY') {
+    document.getElementById('recipe-grid').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">⚠️</div>
+        <p>请先填入 Supabase 凭证（打开 index.html 查看说明）</p>
+      </div>
+    `;
+    return;
+  }
+
+  renderSidebar();
+  renderMobileTab();
+  document.getElementById('search-input').addEventListener('input', renderRecipes);
+  await loadRecipes();
+}
+
+// ===== 从 Supabase 读取菜谱 =====
+async function loadRecipes() {
+  const grid = document.getElementById('recipe-grid');
+  grid.innerHTML = '<div class="loading"><div class="spinner"></div>加载中...</div>';
+
+  const { data, error } = await sbClient
+    .from('recipes')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('读取失败:', error);
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">❌</div>
+        <p>读取数据失败，请检查 Supabase 配置<br><small>${error.message}</small></p>
+      </div>
+    `;
+    return;
+  }
+
+  recipes = data || [];
+  renderRecipes();
+}
+
+// ===== 渲染侧边栏分类 =====
+function renderSidebar() {
+  const container = document.getElementById('sidebar-cats');
+  container.innerHTML = CATEGORIES.map(cat => {
+    const count = cat.id === 'all' ? recipes.length : recipes.filter(r => r.category === cat.id).length;
+    const active = currentCategory === cat.id ? 'active' : '';
+    return `
+      <button class="cat-btn ${active}" onclick="selectCategory('${cat.id}')">
+        <span class="badge">${count}</span>
+        ${cat.icon}
+        <span>${cat.name}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+// ===== 渲染移动端底部 Tab =====
+function renderMobileTab() {
+  const container = document.getElementById('mobile-tab');
+  container.innerHTML = CATEGORIES.map(cat => {
+    const active = currentCategory === cat.id ? 'active' : '';
+    return `
+      <button class="cat-btn ${active}" onclick="selectCategory('${cat.id}')">
+        ${cat.icon}
+        <span>${cat.name}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+// ===== 选择分类 =====
+function selectCategory(catId) {
+  currentCategory = catId;
+  renderSidebar();
+  renderMobileTab();
+  renderRecipes();
+}
+
+// ===== 渲染菜谱卡片 =====
+function renderRecipes() {
+  const grid = document.getElementById('recipe-grid');
+  const search = document.getElementById('search-input').value.trim().toLowerCase();
+
+  let filtered = recipes;
+  if (currentCategory !== 'all') {
+    filtered = filtered.filter(r => r.category === currentCategory);
+  }
+  if (search) {
+    filtered = filtered.filter(r => r.name.toLowerCase().includes(search));
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🍳</div>
+        <p>还没有菜谱，点击"+ 上传菜谱"添加第一道菜吧！</p>
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(recipe => {
+    const ingredientsList = recipe.ingredients.split('、').map(i => `<span class="tag">${i.trim()}</span>`).join('');
+    const imgHtml = recipe.image_url
+      ? `<img src="${recipe.image_url}" alt="${recipe.name}">`
+      : `<span>🍳</span>`;
+    return `
+      <div class="recipe-card" onclick="openDetail('${recipe.id}')">
+        <div class="card-img">${imgHtml}</div>
+        <div class="card-body">
+          <div class="card-category">${CAT_ICON[recipe.category]} ${CAT_NAME[recipe.category]}</div>
+          <div class="card-name">${recipe.name}</div>
+          <div class="card-ingredients">${ingredientsList}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ===== 上传弹窗 =====
+function openUploadModal() {
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    showToast('请先配置 Supabase 凭证');
+    return;
+  }
+  document.getElementById('upload-modal').classList.add('open');
+}
+
+function closeUploadModal() {
+  document.getElementById('upload-modal').classList.remove('open');
+  resetUploadForm();
+}
+
+function resetUploadForm() {
+  document.getElementById('form-name').value = '';
+  document.getElementById('form-category').value = 'hot';
+  document.getElementById('form-ingredients').value = '';
+  document.getElementById('form-file').value = '';
+  document.getElementById('img-preview').style.display = 'none';
+  document.getElementById('img-placeholder').style.display = '';
+  document.getElementById('upload-submit-btn').disabled = false;
+  selectedFile = null;
+  compressedDataUrl = null;
+  isUploading = false;
+}
+
+// ===== 图片选择 & 压缩 =====
+function handleImageSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  selectedFile = file;
+  compressImage(file, (dataUrl) => {
+    compressedDataUrl = dataUrl;
+    document.getElementById('img-preview').src = dataUrl;
+    document.getElementById('img-preview').style.display = '';
+    document.getElementById('img-placeholder').style.display = 'none';
+  });
+}
+
+function compressImage(file, callback) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const max = 800;
+      let w = img.width, h = img.height;
+      if (w > max) { h = h * max / w; w = max; }
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      callback(dataUrl);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===== 发布上传（真实写入 Supabase）=====
+async function handleUpload() {
+  if (isUploading) return;
+
+  const name = document.getElementById('form-name').value.trim();
+  const category = document.getElementById('form-category').value;
+  const ingredients = document.getElementById('form-ingredients').value.trim();
+
+  if (!name) { showToast('请输入菜名'); return; }
+  if (!ingredients) { showToast('请输入原材料'); return; }
+
+  isUploading = true;
+  const btn = document.getElementById('upload-submit-btn');
+  btn.disabled = true;
+  btn.textContent = '上传中...';
+
+  try {
+    // 1. 上传图片到 Supabase Storage
+    let imageUrl = null;
+    if (selectedFile && compressedDataUrl) {
+      // 把 dataUrl 转成 blob
+      const blob = dataURLtoBlob(compressedDataUrl);
+      const fileName = Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.jpg';
+
+      const { data: uploadData, error: uploadError } = await sbClient.storage
+        .from('recipe-images')
+        .upload(fileName, blob, { contentType: 'image/jpeg' });
+
+      if (uploadError) {
+        console.error('图片上传失败:', uploadError);
+        showToast('图片上传失败: ' + uploadError.message);
+        btn.disabled = false;
+        btn.textContent = '发布';
+        isUploading = false;
+        return;
+      }
+
+      // 获取公开 URL
+      const { data: urlData } = sbClient.storage
+        .from('recipe-images')
+        .getPublicUrl(fileName);
+      imageUrl = urlData.publicUrl;
+    }
+
+    // 2. 写入数据库
+    const { data, error } = await sbClient
+      .from('recipes')
+      .insert([{
+        name,
+        category,
+        ingredients,
+        image_url: imageUrl
+      }])
+      .select();
+
+    if (error) {
+      console.error('写入数据库失败:', error);
+      showToast('保存失败: ' + error.message);
+      btn.disabled = false;
+      btn.textContent = '发布';
+      isUploading = false;
+      return;
+    }
+
+    // 3. 更新本地数据并刷新
+    recipes.unshift(data[0]);
+    renderSidebar();
+    renderMobileTab();
+    renderRecipes();
+    closeUploadModal();
+    showToast('上传成功！');
+
+  } catch (err) {
+    console.error('上传出错:', err);
+    showToast('上传出错，请重试');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '发布';
+  isUploading = false;
+}
+
+// ===== dataUrl 转 Blob =====
+function dataURLtoBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const mime = parts[0].match(/:(.*?);/)[1];
+  const raw = atob(parts[1]);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+// ===== 详情弹窗 =====
+function openDetail(id) {
+  const recipe = recipes.find(r => r.id === id);
+  if (!recipe) return;
+
+  currentDetailId = id;
+  const detailModal = document.getElementById('detail-modal');
+
+  const imgContainer = document.getElementById('detail-img');
+  if (recipe.image_url) {
+    imgContainer.innerHTML = `<img src="${recipe.image_url}" alt="${recipe.name}">`;
+  } else {
+    imgContainer.innerHTML = '<span>🍳</span>';
+  }
+
+  document.getElementById('detail-category').textContent = `${CAT_ICON[recipe.category]} ${CAT_NAME[recipe.category]}`;
+  document.getElementById('detail-name').textContent = recipe.name;
+
+  const ingredientsList = recipe.ingredients.split('、').map(i => `<span class="tag">${i.trim()}</span>`).join('');
+  document.getElementById('detail-ingredients').innerHTML = ingredientsList;
+
+  detailModal.classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('open');
+  currentDetailId = null;
+}
+
+// ===== 删除（真实从 Supabase 删除）=====
+async function handleDelete() {
+  if (!currentDetailId) return;
+  if (!confirm('确定要删除这道菜吗？')) return;
+
+  const { error } = await sbClient
+    .from('recipes')
+    .delete()
+    .eq('id', currentDetailId);
+
+  if (error) {
+    console.error('删除失败:', error);
+    showToast('删除失败: ' + error.message);
+    return;
+  }
+
+  recipes = recipes.filter(r => r.id !== currentDetailId);
+  renderSidebar();
+  renderMobileTab();
+  renderRecipes();
+  closeDetailModal();
+  showToast('已删除');
+}
+
+// ===== Toast 提示 =====
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// ===== 启动 =====
+init();
+</script>
+
+</body>
+</html>
