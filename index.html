@@ -720,8 +720,29 @@
 <!-- Toast 提示 -->
 <div class="toast" id="toast"></div>
 
-<!-- ===== 填入你的 Supabase 凭证 ===== -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- ===== Supabase SDK（双 CDN 容错） ===== -->
+<script>
+// 加载 Supabase SDK，jsdelivr 失败则自动切换 unpkg
+(function() {
+  var script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  script.onerror = function() {
+    console.warn('jsdelivr 加载失败，切换到 unpkg');
+    var fallback = document.createElement('script');
+    fallback.src = 'https://unpkg.com/@supabase/supabase-js@2';
+    fallback.onerror = function() {
+      console.error('Supabase SDK 加载失败');
+      document.getElementById('recipe-grid').innerHTML =
+        '<div class="empty-state"><div class="icon">⚠️</div>' +
+        '<p>网络加载失败，请检查网络后刷新页面重试</p></div>';
+    };
+    fallback.onload = function() { if (window.initApp) window.initApp(); };
+    document.head.appendChild(fallback);
+  };
+  script.onload = function() { if (window.initApp) window.initApp(); };
+  document.head.appendChild(script);
+})();
+</script>
 <script>
 // ============================================================
 // ⚠️ 第一步：去 supabase.com 注册项目，把下面两个值替换掉
@@ -732,7 +753,7 @@ const SUPABASE_URL = 'https://iobuquioborahykbzjya.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlvYnVxdWlvYm9yYWh5a2J6anlhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzODU1NzQsImV4cCI6MjA5Nzk2MTU3NH0.RJaPek4uc0qqnWukX3b4Y8J1fdAPbPt1RFgnuDcUIqg';
 // ============================================================
 
-const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let sbClient = null;
 
 // ===== 分类配置 =====
 const CATEGORIES = [
@@ -1174,7 +1195,18 @@ function showToast(msg) {
 }
 
 // ===== 启动 =====
-init();
+function initApp() {
+  // 检查 Supabase SDK 是否加载成功
+  if (!window.supabase) {
+    document.getElementById('recipe-grid').innerHTML =
+      '<div class="empty-state"><div class="icon">⚠️</div>' +
+      '<p>组件加载失败，请检查网络后刷新页面</p></div>';
+    return;
+  }
+  // 创建 Supabase 客户端
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  init();
+}
 </script>
 
 </body>
